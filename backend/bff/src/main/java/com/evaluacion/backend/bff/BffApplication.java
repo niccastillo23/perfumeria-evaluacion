@@ -2,9 +2,11 @@ package com.evaluacion.backend.bff;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
-import java.util.List;
 import java.util.Map;
 
 @SpringBootApplication
@@ -14,32 +16,53 @@ public class BffApplication {
 
     private final RestTemplate restTemplate = new RestTemplate();
     
-    // URLs de microservicios (en un entorno real vendrían de configuración)
-    private final String CATALOG_SERVICE_URL = "http://localhost:8081/api/catalog";
-    private final String ORDER_SERVICE_URL = "http://localhost:8082/api/orders";
+    private final String catalogServiceUrl;
+    private final String orderServiceUrl;
+    private final String profileServiceUrl;
+    private final String adminServiceUrl;
+
+    public BffApplication(
+            @Value("${app.services.catalog-url}") String catalogServiceUrl,
+            @Value("${app.services.orders-url}") String orderServiceUrl,
+            @Value("${app.services.profile-url}") String profileServiceUrl,
+            @Value("${app.services.admin-url}") String adminServiceUrl) {
+        this.catalogServiceUrl = catalogServiceUrl;
+        this.orderServiceUrl = orderServiceUrl;
+        this.profileServiceUrl = profileServiceUrl;
+        this.adminServiceUrl = adminServiceUrl;
+    }
 
     public static void main(String[] args) {
         SpringApplication.run(BffApplication.class, args);
     }
 
     @GetMapping("/shop/catalog")
-    public List<Map<String, Object>> getCatalog() {
-        // En un entorno real llamaríamos al MS1
-        // return restTemplate.getForObject(CATALOG_SERVICE_URL, List.class);
-        
-        // Mock para demostración
-        return List.of(
-            Map.of("id", 1, "name", "Elegance Gold", "brand", "Luxe Parfums", "price", 85.00),
-            Map.of("id", 2, "name", "Midnight Rain", "brand", "Aqua Essence", "price", 120.00)
-        );
+    @PreAuthorize("hasAuthority('SCOPE_Catalog.Read')")
+    public ResponseEntity<Object> getCatalog() {
+        return restTemplate.getForEntity(catalogServiceUrl, Object.class);
     }
 
     @PostMapping("/shop/checkout")
-    public Map<String, Object> checkout(@RequestBody Map<String, Object> orderRequest) {
-        // Orquestación: Podría validar stock en MS1 y luego crear orden en MS2
-        // return restTemplate.postForObject(ORDER_SERVICE_URL, orderRequest, Map.class);
-        
-        return Map.of("orderId", "BFF-" + System.currentTimeMillis(), "status", "PROCESSED_BY_BFF");
+    @PreAuthorize("hasAuthority('SCOPE_Orders.Create')")
+    public ResponseEntity<Object> checkout(@RequestBody Map<String, Object> orderRequest) {
+        return restTemplate.postForEntity(orderServiceUrl, orderRequest, Object.class);
+    }
+
+    @GetMapping("/profile/{username}")
+    public ResponseEntity<Object> getProfile(@PathVariable String username) {
+        return restTemplate.getForEntity(profileServiceUrl + "/" + username, Object.class);
+    }
+
+    @GetMapping("/admin/stats")
+    @PreAuthorize("hasAuthority('SCOPE_Admin.Read')")
+    public ResponseEntity<Object> getAdminStats() {
+        return restTemplate.getForEntity(adminServiceUrl + "/stats", Object.class);
+    }
+
+    @GetMapping("/admin/users")
+    @PreAuthorize("hasAuthority('SCOPE_Admin.Read')")
+    public ResponseEntity<Object> getAdminUsers() {
+        return restTemplate.getForEntity(adminServiceUrl + "/users", Object.class);
     }
 
     @GetMapping("/health")

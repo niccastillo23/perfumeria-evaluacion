@@ -1,4 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { useIsAuthenticated, useMsal } from '@azure/msal-react';
+
+import { accountToUser, isEntraConfigured, loginRequest } from './auth/authConfig.js';
+import { apiFetch } from './auth/apiClient.js';
 import './App.css';
 
 function getProductImage(perfume) {
@@ -41,28 +45,54 @@ function getProductImage(perfume) {
 }
 
 function App() {
+  const { instance, accounts, inProgress } = useMsal();
+  const isAuthenticated = useIsAuthenticated();
+  const account = accounts[0] ?? null;
   const [perfumes, setPerfumes] = useState([]);
 
-  useEffect(() => {
-    const savedUser = localStorage.getItem('perfumeria_user');
-    if (savedUser) {
-      try {
-        const userData = JSON.parse(savedUser);
-        setUser(userData);
-        setCurrentView('catalog');
-      } catch (e) {
-        console.error('Error parsing saved user:', e);
-        localStorage.removeItem('perfumeria_user');
-      }
-    }
-  }, []);
+  const [cart, setCart] = useState([]);
+  const [paymentStatus, setPaymentStatus] = useState(null);
+  const [currentView, setCurrentView] = useState('login');
+  const [user, setUser] = useState(null);
+  const [profileData, setProfileData] = useState(null);
+  const [adminData, setAdminData] = useState(null);
+  const [adminLoading, setAdminLoading] = useState(false);
+  const [usingMockPerfumes, setUsingMockPerfumes] = useState(false);
+  const [usingMockAdminData, setUsingMockAdminData] = useState(false);
+  const [authMessage, setAuthMessage] = useState({ text: '', type: '' });
 
   useEffect(() => {
+    if (isAuthenticated && account) {
+      setUser(accountToUser(account));
+      setCurrentView('catalog');
+      return;
+    }
+
+    if (!isAuthenticated && inProgress === 'none') {
+      setUser(null);
+      setCurrentView('login');
+    }
+  }, [account, inProgress, isAuthenticated]);
+
+  useEffect(() => {
+    if (!isAuthenticated || !account) {
+      return undefined;
+    }
+
     let cancelled = false;
 
     const loadCatalog = async (attempt = 0) => {
       try {
-        const response = await fetch('http://localhost:8081/api/catalog');
+        const response = await apiFetch({
+          instance,
+          account,
+          path: '/api/v1/shop/catalog',
+        });
+
+        if (!response.ok) {
+          throw new Error(`La API respondió con ${response.status}`);
+        }
+
         const data = await response.json();
 
         if (!Array.isArray(data)) {
@@ -104,34 +134,54 @@ function App() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [account, instance, isAuthenticated]);
 
-  const [cart, setCart] = useState([]);
-  const [paymentStatus, setPaymentStatus] = useState(null);
-  const [currentView, setCurrentView] = useState('login'); // 'login', 'register', 'catalog', 'cart', 'profile', 'admin'
-  const [user, setUser] = useState(null);
-  const [profileData, setProfileData] = useState(null);
-  const [adminData, setAdminData] = useState(null);
-  const [adminLoading, setAdminLoading] = useState(false);
-  const [usingMockPerfumes, setUsingMockPerfumes] = useState(false);
-  const [usingMockAdminData, setUsingMockAdminData] = useState(false);
-  const [authForm, setAuthForm] = useState({ username: '', password: '', email: '' });
-  const [authMessage, setAuthMessage] = useState({ text: '', type: '' });
-
-  const handleLogout = () => {
+  const handleLogout = async () => {
     setUser(null);
     setProfileData(null);
     setAdminData(null);
-    setAuthForm({ username: '', password: '', email: '' });
     setAuthMessage({ text: '', type: '' });
     setCurrentView('login');
-    localStorage.removeItem('perfumeria_user');
+
+    if (isAuthenticated) {
+      await instance.logoutRedirect({
+        account,
+        postLogoutRedirectUri: window.location.origin,
+      });
+    }
+  };
+
+  const handleMsalLogin = async () => {
+    setAuthMessage({ text: '', type: '' });
+
+    if (!isEntraConfigured) {
+      setAuthMessage({
+        text: 'Microsoft Entra ID todavía no está configurado. Define las variables VITE_AZURE_CLIENT_ID, VITE_AZURE_TENANT_ID y VITE_API_SCOPE.',
+        type: 'error',
+      });
+      return;
+    }
+
+    try {
+      await instance.loginRedirect(loginRequest);
+    } catch (error) {
+      setAuthMessage({ text: error.message, type: 'error' });
+    }
   };
 
   const fetchProfile = async () => {
     if (!user) return;
     try {
-      const response = await fetch(`http://localhost:8084/api/profile/${user.username}`);
+      const response = await apiFetch({
+        instance,
+        account,
+        path: `/api/v1/profile/${encodeURIComponent(user.username)}`,
+      });
+
+      if (!response.ok) {
+        throw new Error(`La API respondió con ${response.status}`);
+      }
+
       const data = await response.json();
       setProfileData(data);
       setCurrentView('profile');
@@ -146,9 +196,14 @@ function App() {
     setCurrentView('admin');
     try {
       const [statsRes, usersRes] = await Promise.all([
-        fetch('http://localhost:8085/api/admin/stats'),
-        fetch('http://localhost:8085/api/admin/users')
+        apiFetch({ instance, account, path: '/api/v1/admin/stats' }),
+        apiFetch({ instance, account, path: '/api/v1/admin/users' }),
       ]);
+
+      if (!statsRes.ok || !usersRes.ok) {
+        throw new Error(`Admin API respondió ${statsRes.status}/${usersRes.status}`);
+      }
+
       let stats = await statsRes.json();
       let usersData = await usersRes.json();
       
@@ -192,60 +247,6 @@ function App() {
     }
   };
 
-  const toggleAuthView = () => {
-    const nextView = currentView === 'login' ? 'register' : 'login';
-    setCurrentView(nextView);
-    setAuthForm({ username: '', password: '', email: '' });
-    setAuthMessage({ text: '', type: '' });
-  };
-
-  const handleAuthChange = (e) => {
-    setAuthForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
-    if (authMessage.text) setAuthMessage({ text: '', type: '' });
-  };
-
-  const handleRegister = async (e) => {
-    e.preventDefault();
-    try {
-      const response = await fetch('http://localhost:8083/api/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(authForm)
-      });
-      const data = await response.json();
-      setAuthMessage({ text: data.message, type: data.success ? 'success' : 'error' });
-      if (data.success) {
-        // Limpiar el formulario después de un registro exitoso
-        setAuthForm({ username: '', password: '', email: '' });
-        setTimeout(() => setCurrentView('login'), 2000);
-      }
-    } catch (error) {
-      setAuthMessage({ text: 'Error al conectar con el servidor', type: 'error' });
-    }
-  };
-
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    try {
-      const response = await fetch('http://localhost:8083/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: authForm.username, password: authForm.password })
-      });
-      const data = await response.json();
-      setAuthMessage({ text: data.message, type: data.success ? 'success' : 'error' });
-      if (data.success) {
-        setUser(data.user);
-        localStorage.setItem('perfumeria_user', JSON.stringify(data.user));
-        // Limpiar el formulario y mensajes al iniciar sesión exitosamente
-        setAuthForm({ username: '', password: '', email: '' });
-        setAuthMessage({ text: '', type: '' });
-        setTimeout(() => setCurrentView('catalog'), 1000);
-      }
-    } catch (error) {
-      setAuthMessage({ text: 'Error al conectar con el servidor', type: 'error' });
-    }
-  };
 
   const addToCart = (perfume) => {
     const existingItem = cart.find(item => item.id === perfume.id);
@@ -292,61 +293,26 @@ function App() {
   const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   const cartItemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
-  if (currentView === 'login' || currentView === 'register') {
+  if (currentView === 'login') {
     return (
       <div className="auth-container">
         <div className="auth-card">
           <img src="/logo.png" alt="PerfumerIA Logo" className="auth-logo" />
           <h1>PerfumerIA</h1>
-          <h2>{currentView === 'login' ? 'Iniciar Sesión' : 'Registro'}</h2>
-          
+          <h2>Iniciar sesión</h2>
+
           {authMessage.text && (
             <div className={`auth-alert ${authMessage.type}`} onClick={() => setAuthMessage({ text: '', type: '' })} style={{cursor: 'pointer'}}>
               {authMessage.text}
             </div>
           )}
 
-          <form className="auth-form" key={currentView} onSubmit={currentView === 'login' ? handleLogin : handleRegister} autoComplete="off">
-            <input 
-              type="text" 
-              name="username" 
-              placeholder="Nombre de usuario" 
-              value={authForm.username || ''} 
-              onChange={handleAuthChange} 
-              required 
-              autoComplete="new-username"
-            />
-            {currentView === 'register' && (
-              <input 
-                type="email" 
-                name="email" 
-                placeholder="Correo electrónico" 
-                value={authForm.email || ''} 
-                onChange={handleAuthChange} 
-                required 
-                autoComplete="new-email"
-              />
-            )}
-            <input 
-              type="password" 
-              name="password" 
-              placeholder="Contraseña" 
-              value={authForm.password || ''} 
-              onChange={handleAuthChange} 
-              required 
-              autoComplete="new-password"
-            />
-            <button type="submit" className="btn-auth">
-              {currentView === 'login' ? 'Entrar' : 'Registrarse'}
-            </button>
-          </form>
-
-          <p className="auth-switch">
-            {currentView === 'login' ? '¿No tienes cuenta?' : '¿Ya tienes cuenta?'}
-            <span onClick={toggleAuthView}>
-              {currentView === 'login' ? ' Regístrate' : ' Inicia sesión'}
-            </span>
+          <p className="auth-subtitle">
+            Accede con la cuenta administrada por Microsoft Entra ID.
           </p>
+          <button type="button" className="btn-auth" onClick={handleMsalLogin}>
+            Iniciar sesión con Microsoft
+          </button>
         </div>
       </div>
     );

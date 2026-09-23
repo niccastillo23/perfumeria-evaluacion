@@ -16,19 +16,19 @@ describe('App Component - Auth Views', () => {
     expect(screen.getByText('PerfumerIA')).toBeTruthy()
   })
 
-  it('shows username input in login view', () => {
+  it('explains that authentication is managed by Entra ID', () => {
     render(<App />)
-    expect(screen.getByPlaceholderText('Nombre de usuario')).toBeTruthy()
+    expect(screen.getByText('Accede con la cuenta administrada por Microsoft Entra ID.')).toBeTruthy()
   })
 
-  it('shows password input in login view', () => {
+  it('does not render the legacy password form', () => {
     render(<App />)
-    expect(screen.getByPlaceholderText('Contraseña')).toBeTruthy()
+    expect(screen.queryByPlaceholderText('Contraseña')).toBeNull()
   })
 
   it('has login button', () => {
     render(<App />)
-    expect(screen.getByText('Entrar')).toBeTruthy()
+    expect(screen.getByText('Iniciar sesión con Microsoft')).toBeTruthy()
   })
 })
 

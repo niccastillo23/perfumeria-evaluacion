@@ -1,0 +1,75 @@
+================================================================================
+REPOSITORIOS GITHUB - SMARTLOGIX (PERFUMERIA)
+Evaluacion Parcial 2 - Equipo de Desarrollo
+================================================================================
+
+1. FRONTEND - Web App (React/Vite)
+   URL: https://github.com/TU_USUARIO/perfumeria-frontend
+   Descripcion: Aplicacion SPA desarrollada con React 18 y Vite. Implementa
+   catalogo de perfumes, carrito de compras, autenticacion, vista de perfil
+   y panel de administracion. Conecta con los microservicios backend via HTTP.
+   Tecnologias: React, Vite, CSS, Vitest, Testing Library.
+
+2. BFF - Backend For Frontend (Spring Boot)
+   URL: https://github.com/TU_USUARIO/perfumeria-bff
+   Descripcion: API Gateway/Orquestador que actua como intermediario entre el
+   frontend y los microservicios backend. Centraliza las llamadas a catalogo,
+   pedidos y envios, exponiendo una API unificada optimizada para el cliente web.
+   Tecnologias: Spring Boot 3.2.5, Java 17, Maven.
+   Puerto: 8080
+
+3. MS INVENTARIO - Microservicio de Catalogo (Spring Boot)
+   URL: https://github.com/TU_USUARIO/perfumeria-inventario
+   Descripcion: Gestiona el catalogo de fragancias premium. Implementa el
+   Repository Pattern con Spring Data JPA para acceso a datos. Expone endpoints
+   para listar, buscar por marca, rango de precios y nombre.
+   Patron: Repository Pattern
+   Tecnologias: Spring Boot 3.2.5, Spring Data JPA, PostgreSQL (Supabase).
+   Puerto: 8081
+   Schema: catalog_schema
+
+4. MS PEDIDOS - Microservicio de Ordenes (Spring Boot)
+   URL: https://github.com/TU_USUARIO/perfumeria-pedidos
+   Descripcion: Gestiona la creacion y consulta de ordenes de compra. Implementa
+   el Factory Method Pattern para el procesamiento de multiples metodos de pago
+   (tarjeta de credito, PayPal, contra entrega).
+   Patron: Factory Method Pattern
+   Tecnologias: Spring Boot 3.2.5, Spring Data JPA, PostgreSQL (Supabase).
+   Puerto: 8082
+   Schema: orders_schema
+
+5. MS ENVIOS - Microservicio de Envios (Spring Boot)
+   URL: https://github.com/TU_USUARIO/perfumeria-envios
+   Descripcion: Gestiona la creacion y seguimiento de envios. Implementa el
+   Circuit Breaker Pattern con Resilience4j para aislar fallos de APIs externas
+   de transportistas (FedEx, DHL, UPS). Incluye Factory Method para seleccion
+   de transportistas.
+   Patron: Circuit Breaker Pattern + Factory Method
+   Tecnologias: Spring Boot 3.2.5, Spring Data JPA, Resilience4j, PostgreSQL.
+   Puerto: 8086
+   Schema: shipping_schema
+
+6. ARQUETIPO MAVEN - Template de Microservicios
+   URL: https://github.com/TU_USUARIO/perfumeria-archetype
+   Descripcion: Arquetipo Maven reutilizable para generar nuevos microservicios
+   con estructura estandarizada, dependencias preconfiguradas y convenciones
+   del proyecto. Incluye Spring Boot, JPA, PostgreSQL y configuracion base.
+   Tecnologias: Maven Archetype, Spring Boot 3.2.5.
+
+================================================================================
+INSTRUCCIONES PARA ACTUALIZAR LOS ENLACES:
+
+1. Crear cada repositorio en GitHub (privado o publico segun preferencia).
+2. Reemplazar "TU_USUARIO" con tu nombre de usuario de GitHub.
+3. Inicializar git en cada directorio y vincular al repositorio correspondiente:
+
+   cd frontend/web-app
+   git init
+   git remote add origin https://github.com/TU_USUARIO/perfumeria-frontend.git
+   git add .
+   git commit -m "Initial commit"
+   git push -u origin main
+
+   Repetir para cada microservicio en backend/.
+
+================================================================================

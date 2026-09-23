@@ -1,0 +1,23 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: inventory-service
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/perfumeria}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:}
+    driverClassName: org.postgresql.Driver
+    hikari:
+      data-source-properties:
+        prepareThreshold: 0
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        default_schema: catalog_schema
+    open-in-view: false

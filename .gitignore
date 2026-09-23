@@ -1,0 +1,40 @@
+# Java / Maven
+target/
+*.class
+*.jar
+*.war
+*.ear
+.mvn/
+.metadata/
+bin/
+
+# Node / NPM
+node_modules/
+dist/
+dist-ssr
+*.local
+.eslintcache
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+*.DS_Store
+
+# Environment and local secrets
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+
+# Databases
+# Removido H2 local - Solo se usa Supabase Cloud (PostgreSQL)
+
+# Build artifacts
+**/target/
+**/node_modules/
+**/dist/
+**/dist-ssr

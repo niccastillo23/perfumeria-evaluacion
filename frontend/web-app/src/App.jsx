@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useIsAuthenticated, useMsal } from '@azure/msal-react';
 
-import { accountToUser, isEntraConfigured, loginRequest } from './auth/authConfig.js';
+import { accountToUser, isEntraConfigured, loginRequest, protectedResources } from './auth/authConfig.js';
 import { apiFetch } from './auth/apiClient.js';
 import './App.css';
 
@@ -60,6 +60,10 @@ function App() {
   const [usingMockPerfumes, setUsingMockPerfumes] = useState(false);
   const [usingMockAdminData, setUsingMockAdminData] = useState(false);
   const [authMessage, setAuthMessage] = useState({ text: '', type: '' });
+  const [showRegister, setShowRegister] = useState(false);
+  const [registerForm, setRegisterForm] = useState({ displayName: '', email: '', password: '' });
+  const [registerMessage, setRegisterMessage] = useState({ text: '', type: '' });
+  const [registerLoading, setRegisterLoading] = useState(false);
 
   const canManageAdmin = user?.role === 'ADMIN' || user?.role === 'EXECUTIVE';
 
@@ -168,6 +172,33 @@ function App() {
       await instance.loginRedirect(loginRequest);
     } catch (error) {
       setAuthMessage({ text: error.message, type: 'error' });
+    }
+  };
+
+  const handleRegister = async (event) => {
+    event.preventDefault();
+    setRegisterMessage({ text: '', type: '' });
+    setRegisterLoading(true);
+
+    try {
+      const response = await fetch(`${protectedResources.api.endpoint}/api/v1/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(registerForm),
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(data.error || `La API respondió con ${response.status}`);
+      }
+
+      setRegisterMessage({ text: 'Cuenta creada. Ahora inicia sesión con Microsoft.', type: 'success' });
+      setRegisterForm({ displayName: '', email: '', password: '' });
+    } catch (error) {
+      setRegisterMessage({ text: error.message, type: 'error' });
+    } finally {
+      setRegisterLoading(false);
     }
   };
 
@@ -315,6 +346,52 @@ function App() {
           <button type="button" className="btn-auth" onClick={handleMsalLogin}>
             Iniciar sesión con Microsoft
           </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setShowRegister(!showRegister);
+              setRegisterMessage({ text: '', type: '' });
+            }}
+            style={{ marginTop: '14px', background: 'none', border: 'none', color: '#8a6d3b', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.9rem' }}
+          >
+            {showRegister ? 'Volver a iniciar sesión' : 'Crear cuenta'}
+          </button>
+
+          {showRegister && (
+            <form onSubmit={handleRegister} style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {registerMessage.text && (
+                <div className={`auth-alert ${registerMessage.type}`}>{registerMessage.text}</div>
+              )}
+              <input
+                type="text"
+                placeholder="Nombre completo"
+                value={registerForm.displayName}
+                onChange={(e) => setRegisterForm({ ...registerForm, displayName: e.target.value })}
+                required
+                style={{ padding: '10px', border: '1px solid #ccc', borderRadius: '4px' }}
+              />
+              <input
+                type="email"
+                placeholder="Correo (nombre@dominio.com)"
+                value={registerForm.email}
+                onChange={(e) => setRegisterForm({ ...registerForm, email: e.target.value })}
+                required
+                style={{ padding: '10px', border: '1px solid #ccc', borderRadius: '4px' }}
+              />
+              <input
+                type="password"
+                placeholder="Contraseña"
+                value={registerForm.password}
+                onChange={(e) => setRegisterForm({ ...registerForm, password: e.target.value })}
+                required
+                style={{ padding: '10px', border: '1px solid #ccc', borderRadius: '4px' }}
+              />
+              <button type="submit" className="btn-auth" disabled={registerLoading}>
+                {registerLoading ? 'Creando cuenta...' : 'Crear cuenta'}
+              </button>
+            </form>
+          )}
         </div>
       </div>
     );

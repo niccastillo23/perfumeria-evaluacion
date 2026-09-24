@@ -14,28 +14,28 @@ function getProductImage(perfume) {
     'https://images.unsplash.com/photo-1594035910387-fea47794261f?w=300&h=400&fit=crop&crop=center',
     'https://images.unsplash.com/photo-1622618991746-fe6004db3a47?w=300&h=400&fit=crop&crop=center',
     'https://images.unsplash.com/photo-1612817288484-6f916006741a?w=300&h=400&fit=crop&crop=center',
-    'https://images.unsplash.com/photo-1588405748880-12d1d2a59db9?w=300&h=400&fit=crop&crop=center',
-    'https://images.unsplash.com/photo-1619994403073-2cec99c8e9d1?w=300&h=400&fit=crop&crop=center',
+    'https://images.unsplash.com/photo-1595425970377-c9703cf48b6d?w=300&h=400&fit=crop&crop=center',
+    'https://images.unsplash.com/photo-1618331833071-ce81bd50d300?w=300&h=400&fit=crop&crop=center',
     'https://images.unsplash.com/photo-1608528577891-eb055944f2e7?w=300&h=400&fit=crop&crop=center',
     'https://images.unsplash.com/photo-1616949755610-8c9bbc08f138?w=300&h=400&fit=crop&crop=center',
     'https://images.unsplash.com/photo-1611078489935-0cb964de46d6?w=300&h=400&fit=crop&crop=center',
-    'https://images.unsplash.com/photo-1590736969955-71cc94901144?w=300&h=400&fit=crop&crop=center',
+    'https://images.unsplash.com/photo-1595341888016-a392ef81b7de?w=300&h=400&fit=crop&crop=center',
     'https://images.unsplash.com/photo-1618331833071-ce81bd50d300?w=300&h=400&fit=crop&crop=center',
     'https://images.unsplash.com/photo-1595425970377-c9703cf48b6d?w=300&h=400&fit=crop&crop=center',
-    'https://images.unsplash.com/photo-1615634262417-98ba46d5b5f3?w=300&h=400&fit=crop&crop=center',
-    'https://images.unsplash.com/photo-1523293182086-7651a899d37f?w=300&h=400&fit=crop&crop=center',
-    'https://images.unsplash.com/photo-1543487946-78a8575e6941?w=300&h=400&fit=crop&crop=center',
     'https://images.unsplash.com/photo-1601004890684-d8cbf643f5f2?w=300&h=400&fit=crop&crop=center',
-    'https://images.unsplash.com/photo-1583512603805-3cc6b7f38113?w=300&h=400&fit=crop&crop=center',
+    'https://images.unsplash.com/photo-1523293182086-7651a899d37f?w=300&h=400&fit=crop&crop=center',
+    'https://images.unsplash.com/photo-1556228453-efd6c1ff04f6?w=300&h=400&fit=crop&crop=center',
+    'https://images.unsplash.com/photo-1601004890684-d8cbf643f5f2?w=300&h=400&fit=crop&crop=center',
+    'https://images.unsplash.com/photo-1560343090-f0409e92791a?w=300&h=400&fit=crop&crop=center',
     'https://images.unsplash.com/photo-1595341888016-a392ef81b7de?w=300&h=400&fit=crop&crop=center',
     'https://images.unsplash.com/photo-1556228453-efd6c1ff04f6?w=300&h=400&fit=crop&crop=center',
     'https://images.unsplash.com/photo-1560343090-f0409e92791a?w=300&h=400&fit=crop&crop=center',
-    'https://images.unsplash.com/photo-1571875257727-256c39da4292?w=300&h=400&fit=crop&crop=center',
-    'https://images.unsplash.com/photo-1558769132-cb1eda38c77d?w=300&h=400&fit=crop&crop=center',
+    'https://images.unsplash.com/photo-1585386959984-a4155224a1ad?w=300&h=400&fit=crop&crop=center',
+    'https://images.unsplash.com/photo-1598300042247-d088f8ab3a91?w=300&h=400&fit=crop&crop=center',
     'https://images.unsplash.com/photo-1594035910387-fea47794261f?w=300&h=400&fit=crop&crop=center',
     'https://images.unsplash.com/photo-1541961017774-22349e4a1262?w=300&h=400&fit=crop&crop=center',
     'https://images.unsplash.com/photo-1585386959984-a4155224a1ad?w=300&h=400&fit=crop&crop=center',
-    'https://images.unsplash.com/photo-1600180758895-0c5a26d42ebe?w=300&h=400&fit=crop&crop=center',
+    'https://images.unsplash.com/photo-1572635196237-14b3f281503f?w=300&h=400&fit=crop&crop=center',
     'https://images.unsplash.com/photo-1598300042247-d088f8ab3a91?w=300&h=400&fit=crop&crop=center',
     'https://images.unsplash.com/photo-1572635196237-14b3f281503f?w=300&h=400&fit=crop&crop=center'
   ];
@@ -60,6 +60,8 @@ function App() {
   const [usingMockPerfumes, setUsingMockPerfumes] = useState(false);
   const [usingMockAdminData, setUsingMockAdminData] = useState(false);
   const [authMessage, setAuthMessage] = useState({ text: '', type: '' });
+
+  const canManageAdmin = user?.role === 'ADMIN' || user?.role === 'EXECUTIVE';
 
   useEffect(() => {
     if (isAuthenticated && account) {
@@ -114,8 +116,8 @@ function App() {
                 { id: 4, name: "Wooden Sage", brand: "Terra Nova", price: 145.75, image: "https://images.unsplash.com/photo-1594035910387-fea47794261f?w=300&h=400&fit=crop&crop=center" },
                 { id: 5, name: "Golden Amber", brand: "Chanel", price: 275.00, image: "https://images.unsplash.com/photo-1622618991746-fe6004db3a47?w=300&h=400&fit=crop&crop=center" },
                 { id: 6, name: "Mystic Oud", brand: "Orient Express", price: 320.50, image: "https://images.unsplash.com/photo-1612817288484-6f916006741a?w=300&h=400&fit=crop&crop=center" },
-                { id: 7, name: "Aqua Di Gio", brand: "Giorgio Armani", price: 165.00, image: "https://images.unsplash.com/photo-1588405748880-12d1d2a59db9?w=300&h=400&fit=crop&crop=center" },
-                { id: 8, name: "Savage", brand: "Dior", price: 220.00, image: "https://images.unsplash.com/photo-1619994403073-2cec99c8e9d1?w=300&h=400&fit=crop&crop=center" },
+                { id: 7, name: "Aqua Di Gio", brand: "Giorgio Armani", price: 165.00, image: "https://images.unsplash.com/photo-1595425970377-c9703cf48b6d?w=300&h=400&fit=crop&crop=center" },
+                { id: 8, name: "Savage", brand: "Dior", price: 220.00, image: "https://images.unsplash.com/photo-1618331833071-ce81bd50d300?w=300&h=400&fit=crop&crop=center" },
                 { id: 9, name: "Bleu", brand: "Chanel", price: 280.00, image: "https://images.unsplash.com/photo-1608528577891-eb055944f2e7?w=300&h=400&fit=crop&crop=center" },
                 { id: 10, name: "Eros", brand: "Versace", price: 195.00, image: "https://images.unsplash.com/photo-1616949755610-8c9bbc08f138?w=300&h=400&fit=crop&crop=center" },
                 { id: 11, name: "One Million", brand: "Paco Rabanne", price: 170.00, image: "https://images.unsplash.com/photo-1611078489935-0cb964de46d6?w=300&h=400&fit=crop&crop=center" }
@@ -191,7 +193,7 @@ function App() {
   };
 
   const fetchAdminData = async () => {
-    if (!user || (user.role !== 'ADMIN' && user.role !== 'EXECUTIVE')) return;
+    if (!canManageAdmin) return;
     setAdminLoading(true);
     setCurrentView('admin');
     try {
@@ -334,7 +336,7 @@ function App() {
               <span className="user-welcome" onClick={fetchProfile} style={{cursor: 'pointer', textDecoration: 'underline'}}>
                 Hola, {user.username} ({user.role})
               </span>
-              {(user.role === 'ADMIN' || user.role === 'EXECUTIVE') && (
+              {canManageAdmin && (
                 <button className={`btn-nav ${currentView === 'admin' ? 'active' : ''}`} onClick={fetchAdminData}>Panel Admin</button>
               )}
             </div>
@@ -528,7 +530,7 @@ function App() {
           </section>
         )}
 
-        {currentView === 'admin' && (
+        {currentView === 'admin' && canManageAdmin && (
           <section className="admin-view">
             <div className="view-header">
               <button className="btn-back" onClick={() => setCurrentView('catalog')}>← Volver al Catálogo</button>

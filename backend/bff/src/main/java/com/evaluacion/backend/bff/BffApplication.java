@@ -14,18 +14,20 @@ import java.util.Map;
 @RequestMapping("/api/v1")
 public class BffApplication {
 
-    private final RestTemplate restTemplate = new RestTemplate();
-    
+    private final RestTemplate restTemplate;
+
     private final String catalogServiceUrl;
     private final String orderServiceUrl;
     private final String profileServiceUrl;
     private final String adminServiceUrl;
 
     public BffApplication(
+            RestTemplate restTemplate,
             @Value("${app.services.catalog-url}") String catalogServiceUrl,
             @Value("${app.services.orders-url}") String orderServiceUrl,
             @Value("${app.services.profile-url}") String profileServiceUrl,
             @Value("${app.services.admin-url}") String adminServiceUrl) {
+        this.restTemplate = restTemplate;
         this.catalogServiceUrl = catalogServiceUrl;
         this.orderServiceUrl = orderServiceUrl;
         this.profileServiceUrl = profileServiceUrl;

@@ -28,15 +28,18 @@ export const protectedResources = {
   },
 };
 
+const ROLE_PRIORITY = ['ADMIN', 'EXECUTIVE', 'CLIENT'];
+
 export const accountToUser = (account) => {
   const claims = account?.idTokenClaims ?? {};
-  const roles = Array.isArray(claims.roles) ? claims.roles : [];
+  const roles = (Array.isArray(claims.roles) ? claims.roles : [])
+    .map((role) => String(role).toUpperCase());
 
   return {
     username: account?.username ?? claims.preferred_username ?? 'usuario',
     email: account?.username ?? claims.email ?? '',
     name: account?.name ?? claims.name ?? '',
-    role: roles[0] ?? 'CLIENT',
+    role: ROLE_PRIORITY.find((role) => roles.includes(role)) ?? 'CLIENT',
     roles,
     oid: claims.oid,
     subject: claims.sub,

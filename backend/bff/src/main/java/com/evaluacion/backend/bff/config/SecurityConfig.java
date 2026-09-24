@@ -89,7 +89,7 @@ public class SecurityConfig {
 
         @Override
         public OAuth2TokenValidatorResult validate(Jwt token) {
-            if (!expectedAudience.isBlank() && token.getAudience().contains(expectedAudience)) {
+            if (!expectedAudience.isBlank() && matchesAudience(token.getAudience())) {
                 return OAuth2TokenValidatorResult.success();
             }
 
@@ -98,6 +98,16 @@ public class SecurityConfig {
                 "El token no contiene la audiencia configurada para PerfumerIA.",
                 null
             ));
+        }
+
+        // Azure emite el client id (GUID) como aud cuando el App ID URI es api://<client-id>.
+        private boolean matchesAudience(java.util.List<String> tokenAudiences) {
+            String clientIdForm = expectedAudience.startsWith("api://")
+                ? expectedAudience.substring("api://".length())
+                : expectedAudience;
+
+            return tokenAudiences.stream()
+                .anyMatch(audience -> audience.equals(expectedAudience) || audience.equals(clientIdForm));
         }
     }
 }

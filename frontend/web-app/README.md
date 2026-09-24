@@ -63,12 +63,41 @@ web-app/
 
 ---
 
+## Configuración (.env)
+
+Copia `.env.example` a `.env` y completa los valores públicos de Entra ID:
+
+```text
+VITE_AZURE_CLIENT_ID=<spa-client-id>
+VITE_AZURE_TENANT_ID=<tenant-id>
+VITE_API_BASE_URL=http://localhost:8080
+VITE_API_SCOPE=api://<api-client-id>/Catalog.Read
+```
+
+- En desarrollo, `VITE_API_BASE_URL` apunta al BFF (`http://localhost:8080`).
+- En producción apunta al API Gateway
+  (`https://<api-gateway-id>.execute-api.<region>.amazonaws.com`).
+
+El archivo `.env` está excluido por `.gitignore` y nunca debe publicarse.
+
+## Autenticación
+
+- Login/logout con Microsoft Entra ID usando `@azure/msal-react`
+  (Authorization Code + PKCE).
+- El Access Token se envía al BFF como `Authorization: Bearer <token>`.
+- Formulario "Crear cuenta" que llama a `POST /api/v1/auth/register` en el BFF.
+- Navegación por roles (RBAC) según el claim `roles` del token
+  (`ADMIN`, `CLIENT`, `EXECUTIVE`).
+
 ## Integración con Backend
 
-La app se conecta a los siguientes microservicios:
-- **Auth Service**: `http://localhost:8083` - Para login/registro
-- **Catalog Service**: `http://localhost:8081` - Para catálogo de perfumes
-- **Profile Service**: `http://localhost:8084` - Para perfiles de usuario
-- **Admin Service**: `http://localhost:8085` - Para panel de administración
+La app no llama directamente a los microservicios. Todas las solicitudes pasan
+por el **BFF** (local) o por el **API Gateway** (desplegado), que valida el JWT
+y delega a los servicios internos:
 
-Si los microservicios no están disponibles, la app usa datos de mock para seguir funcionando.
+- `GET /api/v1/shop/catalog` - catálogo de perfumes (`Catalog.Read`)
+- `POST /api/v1/shop/checkout` - pedidos (`Orders.Create`)
+- `GET /api/v1/profile/{username}` - perfil (autenticado)
+- `GET /api/v1/admin/stats`, `GET /api/v1/admin/users` - panel (`Admin.Read`)
+
+Si el backend no está disponible, la app usa datos de mock para seguir funcionando.

@@ -27,7 +27,15 @@ SECURITY_ENABLED=true
 AZURE_ISSUER_URI=https://login.microsoftonline.com/<tenant-id>/v2.0
 AZURE_API_AUDIENCE=api://<api-client-id>
 CORS_ALLOWED_ORIGIN=http://localhost:5173
+AZURE_TENANT_ID=<tenant-id>
+AZURE_CLIENT_ID=<api-client-id>
+AZURE_CLIENT_SECRET=<client-secret-de-solo-servidor>
 ```
+
+`AZURE_TENANT_ID`, `AZURE_CLIENT_ID` y `AZURE_CLIENT_SECRET` habilitan el
+registro de usuarios contra Microsoft Graph (permiso de aplicación
+`User.ReadWrite.All`). El client secret **solo** se usa en el servidor y no se
+versiona.
 
 Mientras Microsoft Entra ID no esté disponible, `SECURITY_ENABLED` queda en
 `false` únicamente para permitir el trabajo local. Esta configuración no debe
@@ -36,11 +44,18 @@ usarse en el entorno evaluado o desplegado.
 Las URLs de los microservicios pueden sobrescribirse con `CATALOG_SERVICE_URL`,
 `ORDERS_SERVICE_URL`, `PROFILE_SERVICE_URL` y `ADMIN_SERVICE_URL`.
 
-## Rutas protegidas
+## Rutas
+
+Públicas:
+
+- `GET /api/v1/health` es público para health checks.
+- `POST /api/v1/auth/register` es público y crea el usuario en Entra ID vía
+  Microsoft Graph.
+
+Protegidas:
 
 - `GET /api/v1/shop/catalog` requiere `Catalog.Read`.
 - `POST /api/v1/shop/checkout` requiere `Orders.Create`.
 - `GET /api/v1/profile/{username}` requiere autenticación.
 - `GET /api/v1/admin/stats` requiere `Admin.Read`.
 - `GET /api/v1/admin/users` requiere `Admin.Read`.
-- `GET /api/v1/health` es público para health checks.

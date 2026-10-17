@@ -1,9 +1,17 @@
-# PerfumerIA - Evaluacion Parcial 1
+# PerfumerIA - Desarrollo Cloud Native I
 
-Proyecto full stack para la Evaluacion Parcial 1 de Desarrollo Cloud Native I.
-La aplicacion mantiene React como frontend y utiliza microservicios Spring Boot
-con un BFF protegido mediante Microsoft Entra ID y JWT, desplegados en la nube
-detras de AWS API Gateway.
+Proyecto full stack que evoluciona a lo largo de las evaluaciones de Desarrollo
+Cloud Native I. La aplicacion mantiene React como frontend y microservicios
+Spring Boot con un BFF protegido mediante Microsoft Entra ID y JWT, desplegados
+en la nube detras de AWS API Gateway.
+
+El repositorio acumula dos encargos:
+
+1. **Primer encargo (Evaluacion Parcial 1):** seguridad cloud con OAuth 2.0 /
+   OpenID Connect, validacion de JWT, roles/scopes y despliegue en AWS.
+2. **Segundo encargo (Evaluacion Parcial N°4):** mensajeria asincrona
+   desacoplada con RabbitMQ (colas, exchanges `topic`/`direct`, DLQ y
+   administracion por API REST).
 
 ## Objetivo de la evaluacion
 
@@ -20,6 +28,37 @@ La implementacion demuestra:
 - Registro de usuarios en el tenant de Entra ID desde el BFF (Microsoft Graph).
 - Despliegue cloud: AWS API Gateway + EC2 con frontend servido por nginx sobre
   HTTPS y backend Spring Boot.
+
+## Comparacion entre el primer y el segundo encargo
+
+| Aspecto | Primer encargo (Evaluacion Parcial 1) | Segundo encargo (Evaluacion Parcial N°4) |
+|---|---|---|
+| Foco | Autenticacion y autorizacion cloud | Mensajeria asincrona desacoplada |
+| Frontend | React + MSAL: login/logout con Entra ID | Suma checkout que publica eventos y no espera las tareas secundarias |
+| Seguridad | OAuth 2.0/OIDC con PKCE y validacion JWT en el BFF | Se conserva; el API Gateway valida el JWT tambien para las rutas administrativas |
+| Backend | BFF + microservicios (catalogo, pedidos, perfil, administracion, envios) | Suma productores/consumidores RabbitMQ y el `rabbit-admin-service` |
+| Mensajeria | No existia | Exchanges `topic` y `direct`, 3 colas con sus 3 DLQ, ACK manual y reintentos |
+| Administracion | No existia | API REST de colas, exchanges y bindings protegida con `Admin.Read` |
+| Infraestructura | AWS API Gateway + EC2 + nginx + TLS | Se agrega el cluster RabbitMQ de 2 nodos con Docker Compose |
+| Persistencia | Perfiles H2 / base de datos | Se mantiene H2 en la demostracion cloud |
+| Resultado verificable | Respuestas `200`, `401` y `403` | Checkout extremo a extremo con la orden `PAID` y los eventos procesados |
+
+### Avances del segundo encargo
+
+- Se incorporo RabbitMQ como broker de mensajeria asincrona para notificaciones,
+  documentos de compra y solicitudes de envio.
+- Los nombres de colas, exchanges, routing keys y reintentos quedaron
+  centralizados en `application.yml`, y los beans `Queue`, `Exchange` y
+  `Binding` se declaran por caso de uso en clases `@Configuration`.
+- Los consumidores usan `@RabbitListener` agrupados por dominio, con ACK manual,
+  reintentos para errores recuperables y derivacion a DLQ.
+- Se agrego `rabbit-admin-service`, que encapsula la administracion de RabbitMQ
+  en un servicio dedicado y expone endpoints REST validados.
+- La topologia se desplego en un cluster de dos nodos levantado con Docker
+  Compose en EC2, sin exponer RabbitMQ a Internet.
+
+La logica del primer encargo (login, seguridad y catalogo) no se modifico: la
+mensajeria se agrego de forma desacoplada detras del checkout.
 
 ## Arquitectura
 
@@ -44,6 +83,13 @@ Microservicios Spring Boot (H2)
     |
     v
 Catalogo :8081 | Pedidos :8082 | Perfil :8084 | Administracion :8085
+                         |
+                         | AMQP: eventos de pedido
+                         v
+          RabbitMQ cluster (2 nodos, Docker Compose)
+             |                         |
+             v                         v
+     Notificaciones/documentos    Envíos :8086
 ```
 
 El frontend no llama directamente a los microservicios. Las solicitudes pasan
@@ -57,11 +103,12 @@ al servicio interno correspondiente.
 | Frontend React/Vite | 5173 | Interfaz, MSAL y consumo del BFF |
 | BFF Spring Boot | 8080 | Seguridad, CORS y orquestacion |
 | Catalogo | 8081 | Productos y perfumes |
-| Pedidos | 8082 | Ordenes y pagos simulados |
+| Pedidos | 8082 | Ordenes, pagos simulados y publicación de eventos |
 | Auth legacy | 8083 | Servicio anterior, no usado para el login evaluado |
 | Perfil | 8084 | Perfiles de usuario |
 | Administracion | 8085 | Estadisticas y usuarios |
 | Envios | 8086 | Envios, Factory y Circuit Breaker |
+| Administrador RabbitMQ | 8087 | Gestión interna de colas, exchanges y bindings |
 
 Microsoft Entra ID administra la identidad de los usuarios del flujo evaluado.
 El `auth-service` existente se conserva como componente legacy, pero no debe
@@ -152,6 +199,8 @@ VITE_AZURE_CLIENT_ID=<spa-client-id>
 VITE_AZURE_TENANT_ID=<tenant-id>
 VITE_API_BASE_URL=http://localhost:8080
 VITE_API_SCOPE=api://<api-client-id>/Catalog.Read
+VITE_ORDERS_API_SCOPE=api://<api-client-id>/Orders.Create
+VITE_ADMIN_API_SCOPE=api://<api-client-id>/Admin.Read
 ```
 
 El archivo `.env` esta excluido por `.gitignore` y nunca debe publicarse.
@@ -209,6 +258,72 @@ ADMIN_SERVICE_URL
 - `GET /api/v1/profile/{username}`: requiere autenticacion.
 - `GET /api/v1/admin/stats`: requiere `Admin.Read`.
 - `GET /api/v1/admin/users`: requiere `Admin.Read`.
+- `/api/v1/admin/rabbitmq/**`: gestión de topología; requiere `Admin.Read`.
+
+## Mensajería asíncrona con RabbitMQ
+
+El checkout guarda la orden y publica eventos. Las notificaciones, los documentos
+de compra y las solicitudes de envío se procesan de forma asíncrona. React
+continúa llamando al BFF con OAuth/MSAL; los microservicios se conectan al broker
+por AMQP.
+
+| Exchange | Tipo | Routing key / patrón | Cola | DLQ |
+|---|---|---|---|---|
+| `perfumeria.orders.topic` | topic | `orders.*` | `perfumeria.orders.notifications` | `perfumeria.orders.notifications.dlq` |
+| `perfumeria.orders.topic` | topic | `orders.paid` | `perfumeria.orders.documents` | `perfumeria.orders.documents.dlq` |
+| `perfumeria.shipping.direct` | direct | `shipping.requested` | `perfumeria.shipping.requests` | `perfumeria.shipping.requests.dlq` |
+
+Los rechazos definitivos se enrutan mediante el exchange
+`perfumeria.dead-letter.direct`. Los consumidores confirman con ACK manual,
+reintentan errores recuperables hasta el máximo configurado y registran los
+mensajes enviados a DLQ.
+
+### Clúster local de dos nodos
+
+Con Docker Desktop iniciado:
+
+```bash
+cd infra/rabbitmq
+cp .env.example .env
+docker compose up -d
+docker compose ps
+docker compose exec rabbitmq1 rabbitmq-diagnostics cluster_status
+```
+
+Para iniciar los servicios Java desde otro terminal con los mismos valores,
+exporta el archivo de entorno desde la raíz del repositorio:
+
+```bash
+set -a
+source infra/rabbitmq/.env
+set +a
+```
+
+Management UI: `http://localhost:15672` (nodo 1) y
+`http://localhost:15673` (nodo 2). AMQP y Management quedan enlazados a
+localhost. Para AWS, reemplazar credenciales y cookie Erlang por valores
+propios; no publicar `.env` ni exponer los puertos RabbitMQ a Internet.
+
+Para ejecutar pedidos y envíos con H2 en desarrollo local:
+
+```bash
+cd backend/microservice-2
+mvn spring-boot:run -Dspring-boot.run.profiles=h2
+```
+
+```bash
+cd backend/shipping-service
+mvn spring-boot:run -Dspring-boot.run.profiles=h2
+```
+
+El administrador RabbitMQ escucha internamente en `8087`; sus operaciones se
+publican a través del BFF protegidas por `Admin.Read`. En AWS API Gateway se deben
+agregar las rutas protegidas `/api/v1/admin/rabbitmq/**` y mantener el puerto
+`8087` fuera del acceso público.
+
+Guía paso a paso: [`docs/rabbitmq/IMPLEMENTACION.md`](docs/rabbitmq/IMPLEMENTACION.md).
+Lista de capturas: [`docs/rabbitmq/EVIDENCIAS.md`](docs/rabbitmq/EVIDENCIAS.md).
+Guion de exposición: [`docs/rabbitmq/PRESENTACION.md`](docs/rabbitmq/PRESENTACION.md).
 
 ## Despliegue cloud
 
@@ -218,10 +333,17 @@ La arquitectura cloud se compone de:
   habilitado. Expone las rutas del BFF, incluida la ruta publica de registro.
 - **Instancia EC2** que ejecuta:
   - el **BFF** en `:8080`;
-  - los microservicios de catalogo (`:8081`), pedidos (`:8082`), perfil
-    (`:8084`) y administracion (`:8085`) con base de datos H2;
+  - los microservicios de catálogo (`:8081`), pedidos (`:8082`), perfil
+    (`:8084`), administración (`:8085`) y envíos (`:8086`);
+  - `rabbit-admin-service` en `127.0.0.1:8087` y el clúster RabbitMQ de dos nodos
+    iniciado mediante Docker Compose;
 - **nginx** como servidor del build de React (`dist/`) sobre HTTPS.
 - **Certificado TLS** emitido por Let's Encrypt, con redireccion HTTP -> HTTPS.
+
+El API Gateway mantiene el autorizador JWT para las rutas del BFF, incluidas las
+operaciones de administración RabbitMQ con `Admin.Read`. Los puertos RabbitMQ y
+`8087` se mantienen fuera del acceso público. Añade `DELETE` a los métodos CORS
+permitidos en API Gateway para las operaciones administrativas.
 
 Variables usadas por el frontend en el build de produccion:
 
@@ -230,6 +352,8 @@ VITE_AZURE_CLIENT_ID=<spa-client-id>
 VITE_AZURE_TENANT_ID=<tenant-id>
 VITE_API_BASE_URL=https://<api-gateway-id>.execute-api.<region>.amazonaws.com
 VITE_API_SCOPE=api://<api-client-id>/Catalog.Read
+VITE_ORDERS_API_SCOPE=api://<api-client-id>/Orders.Create
+VITE_ADMIN_API_SCOPE=api://<api-client-id>/Admin.Read
 ```
 
 ## Evidencia de seguridad
@@ -260,6 +384,14 @@ BFF:
 ```bash
 cd backend/bff
 mvn test
+```
+
+Pedidos, envíos y administrador RabbitMQ:
+
+```bash
+cd backend/microservice-2 && mvn test
+cd ../shipping-service && mvn test
+cd ../rabbit-admin-service && mvn test
 ```
 
 Con Entra ID configurado, se deben comprobar estos casos:

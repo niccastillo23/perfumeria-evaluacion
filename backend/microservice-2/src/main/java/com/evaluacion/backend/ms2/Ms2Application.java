@@ -2,7 +2,8 @@ package com.evaluacion.backend.ms2;
 
 import com.evaluacion.backend.ms2.factory.PaymentMethod;
 import com.evaluacion.backend.ms2.factory.PaymentMethodFactory;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.evaluacion.backend.ms2.messaging.OrderEventPublisher;
+import com.evaluacion.backend.ms2.messaging.OrderMessagingEvent;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.web.bind.annotation.*;
@@ -11,16 +12,22 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Map;
 import java.util.UUID;
 import java.util.Optional;
+import java.util.Objects;
 
 @SpringBootApplication
 @RestController
 @RequestMapping("/api/orders")
 public class Ms2Application {
 
-    @Autowired
-    private OrderRepository orderRepository;
+    private final OrderRepository orderRepository;
+    private final OrderEventPublisher orderEventPublisher;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
+
+    public Ms2Application(OrderRepository orderRepository, OrderEventPublisher orderEventPublisher) {
+        this.orderRepository = orderRepository;
+        this.orderEventPublisher = orderEventPublisher;
+    }
 
     public static void main(String[] args) {
         SpringApplication.run(Ms2Application.class, args);
@@ -45,6 +52,10 @@ public class Ms2Application {
 
             OrderEntity newOrder = new OrderEntity(orderId, itemsJson, total, status);
             orderRepository.save(newOrder);
+
+            String destination = Objects.toString(orderDetails.get("destination"), "Por coordinar con el cliente");
+            String carrier = Objects.toString(orderDetails.get("carrier"), "dhl");
+            orderEventPublisher.publish(new OrderMessagingEvent(orderId, total, status, carrier, destination));
 
             return Map.of(
                 "orderId", orderId,

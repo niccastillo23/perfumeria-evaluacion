@@ -72,6 +72,8 @@ VITE_AZURE_CLIENT_ID=<spa-client-id>
 VITE_AZURE_TENANT_ID=<tenant-id>
 VITE_API_BASE_URL=http://localhost:8080
 VITE_API_SCOPE=api://<api-client-id>/Catalog.Read
+VITE_ORDERS_API_SCOPE=api://<api-client-id>/Orders.Create
+VITE_ADMIN_API_SCOPE=api://<api-client-id>/Admin.Read
 ```
 
 - En desarrollo, `VITE_API_BASE_URL` apunta al BFF (`http://localhost:8080`).
@@ -99,5 +101,7 @@ y delega a los servicios internos:
 - `POST /api/v1/shop/checkout` - pedidos (`Orders.Create`)
 - `GET /api/v1/profile/{username}` - perfil (autenticado)
 - `GET /api/v1/admin/stats`, `GET /api/v1/admin/users` - panel (`Admin.Read`)
+- El checkout conserva MSAL y envía el pedido al BFF; el resultado asíncrono se
+  procesa en RabbitMQ sin que el navegador se conecte al broker.
 
 Si el backend no está disponible, la app usa datos de mock para seguir funcionando.

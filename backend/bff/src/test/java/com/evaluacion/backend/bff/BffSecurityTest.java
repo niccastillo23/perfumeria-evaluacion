@@ -1,6 +1,7 @@
 package com.evaluacion.backend.bff;
 
 import java.util.List;
+import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,6 +11,9 @@ import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
@@ -19,6 +23,7 @@ import org.springframework.web.client.RestTemplate;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 @SpringBootTest(properties = {
     "app.security.enabled=true",
@@ -45,6 +50,14 @@ class BffSecurityTest {
                 public <T> ResponseEntity<T> getForEntity(String url, Class<T> responseType, Object... uriVariables) {
                     return (ResponseEntity<T>) ResponseEntity.ok(List.of());
                 }
+
+                @Override
+                @SuppressWarnings("unchecked")
+                public <T> ResponseEntity<T> exchange(String url, HttpMethod method, HttpEntity<?> requestEntity,
+                                                     Class<T> responseType, Object... uriVariables) {
+                    return (ResponseEntity<T>) ResponseEntity.status(HttpStatus.CREATED)
+                        .body(Map.of("status", "created"));
+                }
             };
         }
     }
@@ -64,6 +77,38 @@ class BffSecurityTest {
             .andReturn().getResponse().getStatus();
 
         assertEquals(403, status);
+    }
+
+    @Test
+    void rabbitAdmin_withoutToken_returns401() throws Exception {
+        int status = mockMvc.perform(post("/api/v1/admin/rabbitmq/queues")
+                .contentType("application/json")
+                .content("{}"))
+            .andReturn().getResponse().getStatus();
+
+        assertEquals(401, status);
+    }
+
+    @Test
+    void rabbitAdmin_withoutAdminScope_returns403() throws Exception {
+        int status = mockMvc.perform(post("/api/v1/admin/rabbitmq/queues")
+                .with(jwt().authorities(new SimpleGrantedAuthority("SCOPE_Catalog.Read")))
+                .contentType("application/json")
+                .content("{}"))
+            .andReturn().getResponse().getStatus();
+
+        assertEquals(403, status);
+    }
+
+    @Test
+    void rabbitAdmin_withAdminScope_forwardsRequest() throws Exception {
+        int status = mockMvc.perform(post("/api/v1/admin/rabbitmq/queues")
+                .with(jwt().authorities(new SimpleGrantedAuthority("SCOPE_Admin.Read")))
+                .contentType("application/json")
+                .content("{\"name\":\"demo.queue\"}"))
+            .andReturn().getResponse().getStatus();
+
+        assertEquals(201, status);
     }
 
     @Test

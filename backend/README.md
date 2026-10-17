@@ -10,6 +10,7 @@ Esta carpeta contiene los componentes backend de **PerfumerIA**, todos generados
 | [Auth Service](./auth-service) | 8083 | com.perfumeria.auth | Gestión de usuarios y roles (CLIENT, ADMIN, EXECUTIVE) |
 | [Profile Service](./profile-service) | 8084 | com.perfumeria.profile | Información detallada del perfil del usuario |
 | [Admin Service](./admin-service) | 8085 | com.perfumeria.admin | Operaciones administrativas y estadísticas |
+| [RabbitMQ Admin Service](./rabbit-admin-service) | 8087 (interno) | com.perfumeria.rabbitadmin | Creación y eliminación de queues, exchanges y bindings |
 | [BFF (Backend For Frontend)](./bff) | 8080 | com.evaluacion.backend.bff | Orquestador principal de la API para frontend |
 | [Microservice 1](./microservice-1) | 8081 | com.evaluacion.backend.ms1 | Catálogo de fragancias (productos) |
 | [Microservice 2](./microservice-2) | 8082 | com.evaluacion.backend.ms2 | Gestión de pedidos y pagos (Factory Pattern) |

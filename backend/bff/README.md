@@ -42,7 +42,8 @@ Mientras Microsoft Entra ID no esté disponible, `SECURITY_ENABLED` queda en
 usarse en el entorno evaluado o desplegado.
 
 Las URLs de los microservicios pueden sobrescribirse con `CATALOG_SERVICE_URL`,
-`ORDERS_SERVICE_URL`, `PROFILE_SERVICE_URL` y `ADMIN_SERVICE_URL`.
+`ORDERS_SERVICE_URL`, `PROFILE_SERVICE_URL`, `ADMIN_SERVICE_URL` y
+`RABBIT_ADMIN_SERVICE_URL` (por defecto `http://localhost:8087/api/rabbitmq`).
 
 ## Rutas
 
@@ -59,3 +60,6 @@ Protegidas:
 - `GET /api/v1/profile/{username}` requiere autenticación.
 - `GET /api/v1/admin/stats` requiere `Admin.Read`.
 - `GET /api/v1/admin/users` requiere `Admin.Read`.
+- `POST|DELETE /api/v1/admin/rabbitmq/**` requiere `Admin.Read` y se delega al
+  servicio interno `rabbit-admin-service`. El puerto `8087` no debe exponerse
+  directamente a Internet.

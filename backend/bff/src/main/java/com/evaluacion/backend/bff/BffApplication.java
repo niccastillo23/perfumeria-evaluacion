@@ -41,34 +41,39 @@ public class BffApplication {
     @GetMapping("/shop/catalog")
     @PreAuthorize("hasAuthority('SCOPE_Catalog.Read')")
     public ResponseEntity<Object> getCatalog() {
-        return restTemplate.getForEntity(catalogServiceUrl, Object.class);
+        return forward(restTemplate.getForEntity(catalogServiceUrl, Object.class));
     }
 
     @PostMapping("/shop/checkout")
     @PreAuthorize("hasAuthority('SCOPE_Orders.Create')")
     public ResponseEntity<Object> checkout(@RequestBody Map<String, Object> orderRequest) {
-        return restTemplate.postForEntity(orderServiceUrl, orderRequest, Object.class);
+        return forward(restTemplate.postForEntity(orderServiceUrl, orderRequest, Object.class));
     }
 
     @GetMapping("/profile/{username}")
     public ResponseEntity<Object> getProfile(@PathVariable String username) {
-        return restTemplate.getForEntity(profileServiceUrl + "/" + username, Object.class);
+        return forward(restTemplate.getForEntity(profileServiceUrl + "/" + username, Object.class));
     }
 
     @GetMapping("/admin/stats")
     @PreAuthorize("hasAuthority('SCOPE_Admin.Read')")
     public ResponseEntity<Object> getAdminStats() {
-        return restTemplate.getForEntity(adminServiceUrl + "/stats", Object.class);
+        return forward(restTemplate.getForEntity(adminServiceUrl + "/stats", Object.class));
     }
 
     @GetMapping("/admin/users")
     @PreAuthorize("hasAuthority('SCOPE_Admin.Read')")
     public ResponseEntity<Object> getAdminUsers() {
-        return restTemplate.getForEntity(adminServiceUrl + "/users", Object.class);
+        return forward(restTemplate.getForEntity(adminServiceUrl + "/users", Object.class));
     }
 
     @GetMapping("/health")
     public String health() {
         return "OK from Perfume E-commerce BFF";
+    }
+
+    private ResponseEntity<Object> forward(ResponseEntity<Object> downstream) {
+        // Do not copy hop-by-hop headers such as Transfer-Encoding from the downstream response.
+        return ResponseEntity.status(downstream.getStatusCode()).body(downstream.getBody());
     }
 }

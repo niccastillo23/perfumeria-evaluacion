@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import React from 'react'
 import App from '../App'
+import { createOrderPayload } from '../checkout/checkoutApi.js'
 
 vi.mock('../App.css', () => ({}))
 
@@ -169,41 +170,18 @@ describe('App Component - Cart Operations', () => {
   })
 })
 
-describe('App Component - Payment Simulation', () => {
-  it('simulatePayment sets processing then success state', () => {
-    vi.useFakeTimers()
-    let paymentStatus = null
-    let cart = [{ id: 1, name: 'A', price: 50, quantity: 1 }]
+describe('Checkout integration payload', () => {
+  it('maps the cart to the orders API contract and includes async shipping details', () => {
+    const payload = createOrderPayload([
+      { id: 7, name: 'Aroma', brand: 'PerfumerIA', price: 20, quantity: 2 },
+    ])
 
-    const simulatePayment = () => {
-      if (cart.length === 0) return
-      paymentStatus = 'processing'
-      setTimeout(() => {
-        paymentStatus = 'success'
-        cart = []
-      }, 1500)
-    }
-
-    simulatePayment()
-    expect(paymentStatus).toBe('processing')
-
-    vi.advanceTimersByTime(1500)
-    expect(paymentStatus).toBe('success')
-    expect(cart).toHaveLength(0)
-
-    vi.useRealTimers()
-  })
-
-  it('simulatePayment does nothing when cart is empty', () => {
-    let paymentStatus = null
-    let cart = []
-
-    const simulatePayment = () => {
-      if (cart.length === 0) return
-      paymentStatus = 'processing'
-    }
-
-    simulatePayment()
-    expect(paymentStatus).toBeNull()
+    expect(payload).toEqual({
+      items: [{ productId: 7, name: 'Aroma', brand: 'PerfumerIA', price: 20, quantity: 2 }],
+      total: 40,
+      payment: { type: 'cash_on_delivery' },
+      carrier: 'dhl',
+      destination: 'Por coordinar con el cliente',
+    })
   })
 })

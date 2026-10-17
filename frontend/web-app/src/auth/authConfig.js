@@ -1,6 +1,9 @@
 const clientId = import.meta.env.VITE_AZURE_CLIENT_ID;
 const tenantId = import.meta.env.VITE_AZURE_TENANT_ID;
 const apiScope = import.meta.env.VITE_API_SCOPE;
+const apiResource = apiScope?.replace(/\/[^/]+$/, '');
+const ordersScope = import.meta.env.VITE_ORDERS_API_SCOPE || (apiResource ? `${apiResource}/Orders.Create` : '');
+const adminScope = import.meta.env.VITE_ADMIN_API_SCOPE || (apiResource ? `${apiResource}/Admin.Read` : '');
 
 export const isEntraConfigured = Boolean(clientId && tenantId && apiScope);
 
@@ -25,6 +28,11 @@ export const protectedResources = {
   api: {
     endpoint: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080',
     scopes: apiScope ? [apiScope] : [],
+    scopesByOperation: {
+      catalog: apiScope ? [apiScope] : [],
+      orders: ordersScope ? [ordersScope] : [],
+      admin: adminScope ? [adminScope] : [],
+    },
   },
 };
 

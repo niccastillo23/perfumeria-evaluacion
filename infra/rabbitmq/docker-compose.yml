@@ -1,0 +1,57 @@
+name: perfumeria-rabbitmq
+
+x-rabbitmq-common: &rabbitmq-common
+  image: rabbitmq:4.2-management
+  restart: unless-stopped
+  environment: &rabbitmq-environment
+    RABBITMQ_ERLANG_COOKIE: ${RABBITMQ_ERLANG_COOKIE:-replace-this-cluster-cookie}
+    RABBITMQ_DEFAULT_USER: ${RABBITMQ_USERNAME:-perfumeria}
+    RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-change-me-local}
+  volumes:
+    - ./rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+  networks:
+    - rabbitmq-cluster
+  healthcheck:
+    test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+    interval: 10s
+    timeout: 5s
+    retries: 10
+    start_period: 20s
+
+services:
+  rabbitmq1:
+    <<: *rabbitmq-common
+    hostname: rabbitmq1
+    environment:
+      <<: *rabbitmq-environment
+      RABBITMQ_NODENAME: rabbit@rabbitmq1
+    ports:
+      - "127.0.0.1:${RABBITMQ_PORT:-5672}:5672"
+      - "127.0.0.1:${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"
+    volumes:
+      - ./rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+      - rabbitmq1-data:/var/lib/rabbitmq
+
+  rabbitmq2:
+    <<: *rabbitmq-common
+    hostname: rabbitmq2
+    environment:
+      <<: *rabbitmq-environment
+      RABBITMQ_NODENAME: rabbit@rabbitmq2
+    depends_on:
+      rabbitmq1:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${RABBITMQ_SECONDARY_PORT:-5673}:5672"
+      - "127.0.0.1:${RABBITMQ_SECONDARY_MANAGEMENT_PORT:-15673}:15672"
+    volumes:
+      - ./rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+      - rabbitmq2-data:/var/lib/rabbitmq
+
+networks:
+  rabbitmq-cluster:
+    name: perfumeria-rabbitmq-cluster
+
+volumes:
+  rabbitmq1-data:
+  rabbitmq2-data:

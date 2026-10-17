@@ -3,6 +3,7 @@ import { useIsAuthenticated, useMsal } from '@azure/msal-react';
 
 import { accountToUser, isEntraConfigured, loginRequest, protectedResources } from './auth/authConfig.js';
 import { apiFetch } from './auth/apiClient.js';
+import { submitOrder } from './checkout/checkoutApi.js';
 import './App.css';
 
 function getProductImage(perfume) {
@@ -52,6 +53,7 @@ function App() {
 
   const [cart, setCart] = useState([]);
   const [paymentStatus, setPaymentStatus] = useState(null);
+  const [paymentMessage, setPaymentMessage] = useState('');
   const [currentView, setCurrentView] = useState('login');
   const [user, setUser] = useState(null);
   const [profileData, setProfileData] = useState(null);
@@ -229,8 +231,8 @@ function App() {
     setCurrentView('admin');
     try {
       const [statsRes, usersRes] = await Promise.all([
-        apiFetch({ instance, account, path: '/api/v1/admin/stats' }),
-        apiFetch({ instance, account, path: '/api/v1/admin/users' }),
+        apiFetch({ instance, account, path: '/api/v1/admin/stats', scopes: protectedResources.api.scopesByOperation.admin }),
+        apiFetch({ instance, account, path: '/api/v1/admin/users', scopes: protectedResources.api.scopesByOperation.admin }),
       ]);
 
       if (!statsRes.ok || !usersRes.ok) {
@@ -310,17 +312,35 @@ function App() {
     setCart([]);
   };
 
-  const simulatePayment = () => {
+  const handleCheckout = async () => {
     if (cart.length === 0) return;
     setPaymentStatus('processing');
-    setTimeout(() => {
+    setPaymentMessage('');
+
+    try {
+      const response = await submitOrder({ instance, account, cart });
+      const order = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(order.error || `La API respondió con ${response.status}`);
+      }
+
+      if (order.status !== 'PAID') {
+        throw new Error('El pedido no pudo ser confirmado. Intenta nuevamente.');
+      }
+
+      setPaymentMessage(`Pedido ${order.orderId} confirmado. Las tareas de envío y documentos se procesan en segundo plano.`);
       setPaymentStatus('success');
       setCart([]);
       setTimeout(() => {
         setPaymentStatus(null);
+        setPaymentMessage('');
         setCurrentView('catalog');
-      }, 3000);
-    }, 1500);
+      }, 5000);
+    } catch (error) {
+      setPaymentMessage(error.message || 'No se pudo completar el pedido.');
+      setPaymentStatus('error');
+    }
   };
 
   const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
@@ -431,8 +451,13 @@ function App() {
       </header>
 
       {paymentStatus === 'success' && (
-        <div className="alert success">
-          ¡Pago realizado con éxito! Gracias por su compra en PerfumerIA.
+        <div className="alert success" role="status">
+          {paymentMessage}
+        </div>
+      )}
+      {paymentStatus === 'error' && (
+        <div className="auth-alert error" role="alert" style={{ margin: '20px 10%' }}>
+          {paymentMessage}
         </div>
       )}
 
@@ -561,7 +586,7 @@ function App() {
                     </div>
                     <button 
                       className={`btn-checkout-full ${paymentStatus === 'processing' ? 'loading' : ''}`}
-                      onClick={simulatePayment}
+                      onClick={handleCheckout}
                       disabled={paymentStatus === 'processing'}
                     >
                       {paymentStatus === 'processing' ? 'Procesando Pago...' : 'Confirmar y Pagar'}

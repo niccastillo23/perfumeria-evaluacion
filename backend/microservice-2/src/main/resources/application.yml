@@ -21,3 +21,35 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         default_schema: orders_schema
     open-in-view: false
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:perfumeria}
+    password: ${RABBITMQ_PASSWORD:change-me-local}
+    listener:
+      simple:
+        acknowledge-mode: manual
+        default-requeue-rejected: false
+        prefetch: 10
+
+app:
+  messaging:
+    exchanges:
+      orders: perfumeria.orders.topic
+      shipping: perfumeria.shipping.direct
+      dead-letter: perfumeria.dead-letter.direct
+    routing-keys:
+      order-created: orders.created
+      order-paid: orders.paid
+      notifications-pattern: orders.*
+      shipping-requested: shipping.requested
+      notifications-dead: orders.notifications.dead
+      documents-dead: orders.documents.dead
+    queues:
+      notifications: perfumeria.orders.notifications
+      notifications-dlq: perfumeria.orders.notifications.dlq
+      documents: perfumeria.orders.documents
+      documents-dlq: perfumeria.orders.documents.dlq
+    consumer:
+      max-attempts: ${RABBITMQ_CONSUMER_MAX_ATTEMPTS:3}
+      retry-delay-ms: ${RABBITMQ_CONSUMER_RETRY_DELAY_MS:250}

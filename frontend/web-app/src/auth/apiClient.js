@@ -2,8 +2,7 @@ import { InteractionRequiredAuthError } from '@azure/msal-browser';
 
 import { protectedResources } from './authConfig.js';
 
-export const getAccessToken = async ({ instance, account }) => {
-  const scopes = protectedResources.api.scopes;
+export const getAccessToken = async ({ instance, account, scopes = protectedResources.api.scopes }) => {
 
   if (!account) {
     throw new Error('Debe iniciar sesión antes de llamar a la API.');
@@ -27,8 +26,8 @@ export const getAccessToken = async ({ instance, account }) => {
   }
 };
 
-export const apiFetch = async ({ instance, account, path, options = {} }) => {
-  const accessToken = await getAccessToken({ instance, account });
+export const apiFetch = async ({ instance, account, path, options = {}, scopes }) => {
+  const accessToken = await getAccessToken({ instance, account, scopes });
   const headers = new Headers(options.headers);
 
   headers.set('Authorization', `Bearer ${accessToken}`);

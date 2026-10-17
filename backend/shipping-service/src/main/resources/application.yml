@@ -22,6 +22,32 @@ spring:
         default_schema: shipping_schema
     open-in-view: false
 
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:perfumeria}
+    password: ${RABBITMQ_PASSWORD:change-me-local}
+    listener:
+      simple:
+        acknowledge-mode: manual
+        default-requeue-rejected: false
+        prefetch: 10
+
+app:
+  messaging:
+    exchanges:
+      shipping: perfumeria.shipping.direct
+      dead-letter: perfumeria.dead-letter.direct
+    routing-keys:
+      shipping-requested: shipping.requested
+      shipping-dead: shipping.requests.dead
+    queues:
+      shipping-requests: perfumeria.shipping.requests
+      shipping-requests-dlq: perfumeria.shipping.requests.dlq
+    consumer:
+      max-attempts: ${RABBITMQ_CONSUMER_MAX_ATTEMPTS:3}
+      retry-delay-ms: ${RABBITMQ_CONSUMER_RETRY_DELAY_MS:250}
+
 resilience4j:
   circuitbreaker:
     instances:
